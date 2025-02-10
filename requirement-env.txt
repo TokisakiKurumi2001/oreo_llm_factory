@@ -1,0 +1,32 @@
+show transformers
+# transformers==4.48.1
+show trl
+# trl==0.14.0
+show loguru
+# loguru==0.7.3
+show accelerate
+# accelerate==1.2.1
+show wandb
+# wandb==0.19.4
+show datasets
+# datasets==3.2.0
+show huggingface_hub
+# huggingface_hub==0.27.1
+show torch
+# torch==2.5.1+cu118
+env clean
+# transformers==4.48.1 trl==0.14.0 loguru==0.7.3 accelerate==1.2.1 wandb==0.19.4 datasets==3.2.0 huggingface_hub==0.27.1 torch==2.5.1+cu118
+env source /root/envs/khoi.trl
+install -e .
+show llamafactory
+# llamafactory==0.9.2.dev0+https://github.com/TokisakiKurumi2001/base-llm-factory@bb46680
+show deepspeed
+install deepspeed>=0.10.0,<=0.16.2
+# deepspeed==0.16.2
+show transformers
+# transformers==4.45.2
+show trl
+# trl==0.9.6
+env clean
+# transformers==4.45.2 trl==0.9.6 loguru==0.7.3 accelerate==1.2.1 wandb==0.19.4 datasets==3.2.0 huggingface_hub==0.27.1 torch==2.5.1+cu118 llamafactory==0.9.2.dev0+https://github.com/TokisakiKurumi2001/base-llm-factory@bb46680 deepspeed==0.16.2
+env source /root/envs/khoi.trl

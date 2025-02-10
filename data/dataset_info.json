@@ -1,0 +1,34 @@
+{
+    "small_qurated": {
+        "hf_hub_url": "princeton-nlp/QuRatedPajama-1B_tokens_for_analysis",
+        "columns": {
+            "prompt": "text"
+        }
+    },
+    "psychology_sft": {
+        "hf_hub_url": "samhog/psychology-10k",
+        "columns": {
+            "prompt": "instruction",
+            "query": "input",
+            "response": "output"
+        }
+    },
+    "orca_dpo": {
+        "hf_hub_url": "Intel/orca_dpo_pairs",
+        "ranking": true,
+        "columns": {
+            "prompt": "question",
+            "chosen": "chosen",
+            "rejected": "rejected"
+        }
+    },
+    "kto_pi": {
+        "hf_hub_url": "SetFit/mrpc",
+        "formatting": "alpaca_custom_kto",
+        "columns": {
+            "prompt": "text1",
+            "response": "text2",
+            "kto_tag": "label#true=1/false=0"
+        }
+    }
+}
