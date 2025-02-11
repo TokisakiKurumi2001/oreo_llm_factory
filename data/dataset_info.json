@@ -1,34 +1,17 @@
 {
-    "small_qurated": {
-        "hf_hub_url": "princeton-nlp/QuRatedPajama-1B_tokens_for_analysis",
+    "oreo_ds": {
+        "hf_hub_url": "jwhj/OREO-Qwen2.5-Math-1.5B-Train",
         "columns": {
-            "prompt": "text"
+            "prompt": "prompt",
+            "response": "response"
         }
     },
-    "psychology_sft": {
-        "hf_hub_url": "samhog/psychology-10k",
+    "oreo_ds_reward": {
+        "hf_hub_url": "jwhj/OREO-Qwen2.5-Math-1.5B-Train",
         "columns": {
-            "prompt": "instruction",
-            "query": "input",
-            "response": "output"
-        }
-    },
-    "orca_dpo": {
-        "hf_hub_url": "Intel/orca_dpo_pairs",
-        "ranking": true,
-        "columns": {
-            "prompt": "question",
-            "chosen": "chosen",
-            "rejected": "rejected"
-        }
-    },
-    "kto_pi": {
-        "hf_hub_url": "SetFit/mrpc",
-        "formatting": "alpaca_custom_kto",
-        "columns": {
-            "prompt": "text1",
-            "response": "text2",
-            "kto_tag": "label#true=1/false=0"
+            "prompt": "prompt",
+            "response": "response",
+            "reward_score": "reward"
         }
     }
 }

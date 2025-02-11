@@ -24,6 +24,7 @@ from .processors.supervised import (
     print_supervised_dataset_example,
 )
 from .processors.unsupervised import preprocess_unsupervised_dataset, print_unsupervised_dataset_example
+from .processors.oreo import preprocess_oreo_dataset, print_oreo_dataset_example
 
 
 if TYPE_CHECKING:
@@ -35,7 +36,7 @@ if TYPE_CHECKING:
 
 def get_preprocess_and_print_func(
     data_args: "DataArguments",
-    stage: Literal["pt", "sft", "rm", "ppo", "kto"],
+    stage: Literal["pt", "sft", "rm", "ppo", "kto", "oreo"],
     template: "Template",
     tokenizer: "PreTrainedTokenizer",
     processor: Optional["ProcessorMixin"],
@@ -98,6 +99,15 @@ def get_preprocess_and_print_func(
             data_args=data_args,
         )
         print_function = partial(print_supervised_dataset_example, tokenizer=tokenizer)
+    elif stage == "oreo":
+        preprocess_func = partial(
+            preprocess_oreo_dataset,
+            template=template,
+            tokenizer=tokenizer,
+            processor=processor,
+            data_args=data_args,
+        )
+        print_function = partial(print_oreo_dataset_example, tokenizer=tokenizer)
     else:
         preprocess_func = partial(
             preprocess_unsupervised_dataset,

@@ -48,6 +48,7 @@ class DatasetAttr:
     chosen: Optional[str] = None
     rejected: Optional[str] = None
     kto_tag: Optional[str] = None
+    reward_score: Optional[str] = None
     # alpaca columns
     prompt: Optional[str] = "instruction"
     query: Optional[str] = "input"
@@ -135,7 +136,7 @@ def get_dataset_list(dataset_names: Optional[Sequence[str]], dataset_dir: str) -
         dataset_attr.set_attr("num_samples", dataset_info[name])
 
         if "columns" in dataset_info[name]:
-            column_names = ["system", "tools", "images", "videos", "chosen", "rejected", "kto_tag"]
+            column_names = ["system", "tools", "images", "videos", "chosen", "rejected", "kto_tag", "reward_score"]
             if dataset_attr.formatting.startswith("alpaca"):
                 column_names.extend(["prompt", "query", "response", "history"])
             else:

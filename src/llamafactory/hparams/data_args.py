@@ -123,6 +123,14 @@ class DataArguments:
             )
         },
     )
+    oreo_reward_mul: int = field(
+        default=1,
+        metadata={"help": "The hyperparameter for multiplying OREO reward function."},
+    )
+    oreo_reward_add: int = field(
+        default=0,
+        metadata={"help": "The hyperparameter for adding OREO reward function."},
+    )
 
     def __post_init__(self):
         def split_arg(arg):

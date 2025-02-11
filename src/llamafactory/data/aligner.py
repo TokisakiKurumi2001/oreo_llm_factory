@@ -141,6 +141,7 @@ def convert_alpaca(
         "_response": response,
         "_system": example[dataset_attr.system] if dataset_attr.system else "",
         "_tools": example[dataset_attr.tools] if dataset_attr.tools else "",
+        "_reward_score": example[dataset_attr.reward_score] if dataset_attr.reward_score else "",
         "_images": convert_images(example[dataset_attr.images]) if dataset_attr.images else None,
         "_videos": convert_videos(example[dataset_attr.videos]) if dataset_attr.videos else None,
     }
@@ -234,6 +235,7 @@ def convert_sharegpt(
         "_response": response,
         "_system": system,
         "_tools": example[dataset_attr.tools] if dataset_attr.tools else "",
+        "_reward_score": example[dataset_attr.reward_score] if dataset_attr.reward_score else "",
         "_images": convert_images(example[dataset_attr.images]) if dataset_attr.images else None,
         "_videos": convert_videos(example[dataset_attr.videos]) if dataset_attr.videos else None,
     }
@@ -252,6 +254,7 @@ def align_dataset(
         _response: [{"role": "assistant", "content": "..."}] * N (N > 1 for ranking dataset)
         _system: "..."
         _tools: "...",
+        _reward: "...",
         _images: [],
         _videos: [],
     """
