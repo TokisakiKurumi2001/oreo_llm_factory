@@ -27,6 +27,7 @@ from .model_utils.misc import register_autoclass
 from .model_utils.mod import convert_pretrained_model_to_mod, load_mod_pretrained_model
 from .model_utils.unsloth import load_unsloth_pretrained_model
 from .model_utils.valuehead import load_valuehead_params
+from .model_utils.oreo_reward_model import AutoModelForCausalLMWithOREOValueHead
 from .patcher import patch_config, patch_model, patch_processor, patch_tokenizer, patch_valuehead_model
 
 
@@ -160,7 +161,10 @@ def load_model(
     model = init_adapter(config, model, model_args, finetuning_args, is_trainable)
 
     if add_valuehead:
-        model = AutoModelForCausalLMWithValueHead.from_pretrained(model)
+        if finetuning_args.stage == "oreo":
+            model = AutoModelForCausalLMWithOREOValueHead.from_pretrained(model)
+        else:
+            model = AutoModelForCausalLMWithValueHead.from_pretrained(model)
         patch_valuehead_model(model)
 
         if model_args.adapter_name_or_path is not None:
