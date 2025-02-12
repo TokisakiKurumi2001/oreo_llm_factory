@@ -24,7 +24,9 @@ from transformers import DataCollatorForSeq2Seq
 
 from ..extras.constants import IGNORE_INDEX, IMAGE_PLACEHOLDER
 from ..extras.packages import is_pillow_available
+from ..extras.logging import get_logger
 
+logger = get_logger(__name__)
 
 if is_pillow_available():
     from PIL import Image
@@ -163,6 +165,30 @@ class MultiModalDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
 
         return features
 
+@dataclass
+class OREODataCollatorWithPadding(MultiModalDataCollatorForSeq2Seq):
+    r"""
+    Data collator to handle action_mask, state_mask and reward_score of OREO training
+    """
+    def __call__(self, features: Sequence[Dict[str, Any]]) -> Dict[str, "torch.Tensor"]:
+        r"""
+        Pad the remaining items that has not been padded in MultiModalDataCollatorForSeq2Seq
+        """
+        action_masks = []
+        state_masks = []
+        reward_scores = []
+        for feature in features:
+            action_masks.append(feature.pop('action_mask', None) or [])
+            state_masks.append(feature.pop('state_mask', None) or [])
+            reward_scores.append(feature.pop('reward_score', None) or [])
+
+        features: Dict[str, "torch.Tensor"] = super().__call__(features)
+        new_len = features['input_ids'].shape[-1]
+        features['action_mask'] = torch.tensor([am + [0] * (new_len - len(am)) for am in action_masks])
+        features['state_mask'] = torch.tensor([sm + [0] * (new_len - len(sm)) for sm in state_masks])
+        features['reward_score'] = torch.tensor(reward_scores)
+        del action_masks, state_masks, reward_scores
+        return features
 
 @dataclass
 class SFTDataCollatorWith4DAttentionMask(MultiModalDataCollatorForSeq2Seq):
