@@ -17,7 +17,7 @@
 
 from typing import TYPE_CHECKING, List, Optional
 
-from ...data import SFTDataCollatorWith4DAttentionMask, get_dataset, get_template_and_fix_tokenizer
+from ...data import OREODataCollatorWithPadding, get_dataset, get_template_and_fix_tokenizer
 from ...extras.constants import IGNORE_INDEX
 from ...extras.logging import get_logger
 from ...extras.misc import calculate_tps, get_logits_processor
@@ -48,47 +48,41 @@ def run_oreo(
     tokenizer = tokenizer_module["tokenizer"]
     template = get_template_and_fix_tokenizer(tokenizer, data_args)
     dataset_module = get_dataset(template, model_args, data_args, training_args, stage="oreo", **tokenizer_module)
-    model = load_model(tokenizer, model_args, finetuning_args, training_args.do_train)
-    ref_model = create_ref_model(model_args, finetuning_args)
+    model = load_model(tokenizer, model_args, finetuning_args, training_args.do_train, add_valuehead=True)
+    ref_model = create_ref_model(model_args, finetuning_args, add_valuehead=True)
     reward_model = load_model(tokenizer, model_args, finetuning_args, training_args.do_train, add_valuehead=True)
 
     if getattr(model, "is_quantized", False) and not training_args.do_train:
         setattr(model, "_hf_peft_config_loaded", True)  # hack here: make model compatible with prediction
 
-    data_collator = SFTDataCollatorWith4DAttentionMask(
-        template=template,
-        model=model if not training_args.predict_with_generate else None,
-        pad_to_multiple_of=8 if training_args.do_train else None,  # for shift short attention
-        label_pad_token_id=IGNORE_INDEX if data_args.ignore_pad_token_for_loss else tokenizer.pad_token_id,
-        block_diag_attn=model_args.block_diag_attn,
-        attn_implementation=getattr(model.config, "_attn_implementation", None),
-        compute_dtype=model_args.compute_dtype,
-        **tokenizer_module,
-    )
+    data_collator = OREODataCollatorWithPadding(template=template, model=model, **tokenizer_module)
 
     training_args.remove_unused_columns = False  # important for multimodal dataset
 
     # Initialize our Trainer
     trainer: "OREOTrainer" = OREOTrainer(
-        model=model,
-        args=training_args,
+        model_args=model_args,
+        training_args=training_args,
         finetuning_args=finetuning_args,
+        generating_args=generating_args,
+        model=model,
+        reward_model=reward_model,
+        ref_model=ref_model,
         data_collator=data_collator,
         callbacks=callbacks,
         **dataset_module,
         **tokenizer_module,
-        **metric_module,
     )
 
     # Keyword arguments for `model.generate`
-    gen_kwargs = generating_args.to_dict(obey_generation_config=True)
-    gen_kwargs["eos_token_id"] = [tokenizer.eos_token_id] + tokenizer.additional_special_tokens_ids
-    gen_kwargs["pad_token_id"] = tokenizer.pad_token_id
-    gen_kwargs["logits_processor"] = get_logits_processor()
+    # gen_kwargs = generating_args.to_dict(obey_generation_config=True)
+    # gen_kwargs["eos_token_id"] = [tokenizer.eos_token_id] + tokenizer.additional_special_tokens_ids
+    # gen_kwargs["pad_token_id"] = tokenizer.pad_token_id
+    # gen_kwargs["logits_processor"] = get_logits_processor()
 
     # Training
     if training_args.do_train:
-        train_result = trainer.train(resume_from_checkpoint=training_args.resume_from_checkpoint)
+        train_result = trainer.oreo_train(resume_from_checkpoint=training_args.resume_from_checkpoint)
         trainer.save_model()
         if finetuning_args.include_effective_tokens_per_second:
             train_result.metrics["effective_tokens_per_sec"] = calculate_tps(

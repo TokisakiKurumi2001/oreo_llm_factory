@@ -7,6 +7,15 @@ from transformers.training_args import _convert_str_dict
 
 from ..extras.misc import use_ray
 
+@dataclass
+class OREOArguments:
+    r"""
+    Arguments for training OREO
+    """
+    reward_learning_rate: Optional[int] = field(
+        default=None,
+        metadata={"help": "Learning rate for training reward model."},
+    )
 
 @dataclass
 class RayArguments:
@@ -38,7 +47,7 @@ class RayArguments:
 
 
 @dataclass
-class TrainingArguments(RayArguments, Seq2SeqTrainingArguments):
+class TrainingArguments(OREOArguments, RayArguments, Seq2SeqTrainingArguments):
     r"""
     Arguments pertaining to the trainer.
     """
