@@ -110,6 +110,25 @@ class FixValueHeadModelCallback(TrainerCallback):
                 model=kwargs.pop("model"), output_dir=output_dir, safe_serialization=args.save_safetensors
             )
 
+class FixOREOValueHeadModelCallback(TrainerCallback):
+    r"""
+    A callback for fixing the checkpoint for valuehead models.
+    """
+
+    def __init__(self, reward_model: "AutoModelForCausalLMWithOREOValueHead") -> None:
+        self.reward_model = reward_model
+
+    @override
+    def on_save(self, args: "TrainingArguments", state: "TrainerState", control: "TrainerControl", **kwargs):
+        if args.should_save:
+            policy_output_dir = os.path.join(args.output_dir, f"{PREFIX_CHECKPOINT_DIR}-{state.global_step}/policy")
+            fix_valuehead_checkpoint(
+                model=kwargs.pop("model"), output_dir=policy_output_dir, safe_serialization=args.save_safetensors
+            )
+            reward_output_dir = os.path.join(args.output_dir, f"{PREFIX_CHECKPOINT_DIR}-{state.global_step}/reward")
+            fix_valuehead_checkpoint(
+                model=self.reward_model, output_dir=reward_output_dir, safe_serialization=args.save_safetensors
+            )
 
 class SaveProcessorCallback(TrainerCallback):
     r"""

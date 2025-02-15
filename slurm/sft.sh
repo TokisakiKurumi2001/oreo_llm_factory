@@ -2,7 +2,7 @@
 #SBATCH --partition=research
 #SBATCH --output=/lustre/scratch/client/movian/research/users/khoilm1/slurm_log/%x-%j.out
 #SBATCH --error=/lustre/scratch/client/movian/research/users/khoilm1/slurm_log/%x-%j.out
-#SBATCH --job-name=pt_llm
+#SBATCH --job-name=oreo
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --gpus-per-node=1
@@ -31,13 +31,13 @@ srun --container-image=/lustre/scratch/client/movian/research/users/khoilm1/setu
      cd /root
 
      source /opt/conda/bin/activate
-     cd research/base-llm-factory/
+     cd research/oreo/
      conda activate /root/envs/khoi.trl
      wandb offline
 
      export CUDA_VISIBLE_DEVICES=0
 
-     llamafactory-cli train training_script/basic/train/sft.yaml
+     llamafactory-cli train training_script/oreo/train/sft.yaml
      cd slurm/notify_slack
      python notify_slack.py
      "
