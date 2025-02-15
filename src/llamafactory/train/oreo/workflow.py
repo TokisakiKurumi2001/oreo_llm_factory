@@ -50,13 +50,13 @@ def run_oreo(
     dataset_module = get_dataset(template, model_args, data_args, training_args, stage="oreo", **tokenizer_module)
     model = load_model(tokenizer, model_args, finetuning_args, training_args.do_train, add_valuehead=True)
     ref_model = create_ref_model(model_args, finetuning_args, add_valuehead=True)
-    reward_model = load_model(tokenizer, model_args, finetuning_args, training_args.do_train, add_valuehead=True)
+    reward_model = load_model(tokenizer, model_args, finetuning_args, training_args.do_train, add_valuehead=True, is_reward_model=True)
 
     if getattr(model, "is_quantized", False) and not training_args.do_train:
         setattr(model, "_hf_peft_config_loaded", True)  # hack here: make model compatible with prediction
 
+    # tokenizer.padding_side = "left"  # use left-padding in generation while using right-padding in training
     data_collator = OREODataCollatorWithPadding(template=template, model=model, **tokenizer_module)
-
     training_args.remove_unused_columns = False  # important for multimodal dataset
 
     # Initialize our Trainer

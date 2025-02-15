@@ -180,7 +180,10 @@ class OREODataCollatorWithPadding(MultiModalDataCollatorForSeq2Seq):
         for feature in features:
             action_masks.append(feature.pop('action_mask', None) or [])
             state_masks.append(feature.pop('state_mask', None) or [])
-            reward_scores.append(feature.pop('reward_score', None) or [])
+            reward_scores.append(feature.get('reward_score'))
+            feature.pop('labels')
+            feature.pop('images')
+            feature.pop('videos')
 
         features: Dict[str, "torch.Tensor"] = super().__call__(features)
         new_len = features['input_ids'].shape[-1]

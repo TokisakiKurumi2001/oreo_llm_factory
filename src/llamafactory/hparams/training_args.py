@@ -16,6 +16,10 @@ class OREOArguments:
         default=None,
         metadata={"help": "Learning rate for training reward model."},
     )
+    reward_beta: int = field(
+        default=0.01,
+        metadata={"help": "Controlled hyper-parameter beta for reward model training."},
+    )
 
 @dataclass
 class RayArguments:
