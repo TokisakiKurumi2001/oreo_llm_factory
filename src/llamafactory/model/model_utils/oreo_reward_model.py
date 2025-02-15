@@ -66,3 +66,10 @@ class AutoModelForCausalLMWithOREOValueHead(AutoModelForCausalLMWithValueHead):
             self.v_head.summary.weight.data.normal_(mean=0.0, std=initializer_range)
         elif init_strategy == "zero":
             self.v_head.summary.weight.data.zero_()
+            
+    def forward(self, *args, **kwargs):
+        action_mask = kwargs.pop('action_mask')
+        logits, loss, values = super().forward(*args, **kwargs)
+        values: "torch.Tensor" = values[:, :-1] # [BS, SEQ_LEN - 1]
+        num_actions = action_mask.size(1)
+        return (logits, loss, values[:, -num_actions:])

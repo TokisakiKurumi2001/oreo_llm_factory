@@ -117,6 +117,7 @@ def load_model(
     finetuning_args: "FinetuningArguments",
     is_trainable: bool = False,
     add_valuehead: bool = False,
+    is_reward_model: bool = False,
 ) -> "PreTrainedModel":
     r"""
     Loads pretrained model.
@@ -161,7 +162,7 @@ def load_model(
     model = init_adapter(config, model, model_args, finetuning_args, is_trainable)
 
     if add_valuehead:
-        if finetuning_args.stage == "oreo":
+        if finetuning_args.stage == "oreo" and is_reward_model:
             model = AutoModelForCausalLMWithOREOValueHead.from_pretrained(model)
         else:
             model = AutoModelForCausalLMWithValueHead.from_pretrained(model)
