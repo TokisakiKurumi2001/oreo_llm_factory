@@ -26,9 +26,11 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import torch
+from torch.functional import F
 from transformers import Trainer
 from typing_extensions import override
 from tqdm import tqdm
+from trl.core import PPODecorators
 
 from ...extras import logging
 from ...extras.constants import IGNORE_INDEX
@@ -37,6 +39,7 @@ from ...extras.misc import AverageMeter, count_parameters, get_current_device, g
 from ..callbacks import FixOREOValueHeadModelCallback
 from ..trainer_utils import create_custom_optimizer, create_custom_scheduler
 from .ppo_trainer import CustomPPOTrainer
+
 
 from transformers.trainer_utils import PREFIX_CHECKPOINT_DIR
 
@@ -68,6 +71,8 @@ class OREOTrainer(CustomPPOTrainer):
         # train the reward model
         self.reward_model.train()
         self.beta = training_args.reward_beta
+        self.kl_reg = training_args.oreo_kl_reg
+        self.unbiased_kl = training_args.oreo_unbiased_kl
 
         default_learning_rate = training_args.learning_rate
         training_args.learning_rate = training_args.reward_learning_rate
@@ -99,9 +104,15 @@ class OREOTrainer(CustomPPOTrainer):
 
         self._log_info()
 
+        total_train_batch_size = (
+            self.args.per_device_train_batch_size
+            * self.args.gradient_accumulation_steps
+            * self.args.world_size
+        )
+
         dataiter = iter(self.dataloader)
-        loss_meter = AverageMeter()
-        reward_meter = AverageMeter()
+        loss_reward_meter = AverageMeter()
+        loss_policy_meter = AverageMeter()
         self.callback_handler.on_train_begin(self.args, self.state, self.control)
 
         max_steps = self.state.max_steps
@@ -132,9 +143,9 @@ class OREOTrainer(CustomPPOTrainer):
             kls = torch.exp(reference_logps - logps) + (logps - reference_logps) - 1
             kl_estimate = torch.mean((kls * action_mask[:, 1:]).sum(dim=-1) / action_mask[:, 1:].sum(dim=-1))
 
-            # value statistics
-            max_value = values_detached.masked_fill(~state_mask[:, :-1].bool(), float("-inf")).max()
-            min_value = values_detached.masked_fill(~state_mask[:, :-1].bool(), float("inf")).min()
+            # # value statistics
+            # max_value = values_detached.masked_fill(~state_mask[:, :-1].bool(), float("-inf")).max()
+            # min_value = values_detached.masked_fill(~state_mask[:, :-1].bool(), float("inf")).min()
 
             loss = self.loss(
                 accumulated_logps,
@@ -145,11 +156,62 @@ class OREOTrainer(CustomPPOTrainer):
             )
             self.accelerator.backward(loss)
             self.reward_optimizer.step()
-            self.reward_model.zero_grad()
+            self.reward_optimizer.zero_grad()
             self.reward_scheduler.step()
+
+            loss_reward_meter.update(loss.detach().mean().item(), n=total_train_batch_size)
+            
+            # training the policy model
+            accumulated_logps, logps, logps_raw = self.accumulated_logps(self.model, batch["input_ids"], batch["attention_mask"], action_mask)
+
+            actor_loss = self.dro_loss(
+                logps,
+                reference_logps,
+                accumulated_logps,
+                reference_accumulated_logps,
+                values_detached,
+                state_mask,
+                batch["reward_score"],
+            )
+
+            if self.kl_reg is not None:
+                if not self.unbiased_kl:
+                    kls_actor = torch.exp(reference_logps - logps) + (logps - reference_logps) - 1
+                else:
+                    kls_actor = F.kl_div(
+                        logps_raw, reference_logps_raw, reduction="none", log_target=True
+                    ).sum(dim=-1)
+                kl_estimate_actor = torch.mean(
+                    (kls_actor * action_mask[:, 1:]).sum(dim=-1) / action_mask[:, 1:].sum(dim=-1)
+                )
+                self.accelerator.backward(actor_loss + self.kl_reg * kl_estimate_actor)
+            else:
+                self.accelerator.backward(actor_loss)
+
+            self.optimizer.step()
+            self.optimizer.zero_grad()
+            self.lr_scheduler.step()
+
+            loss_policy_meter.update(actor_loss.detach().mean().item(), n=total_train_batch_size)
 
             self.state.global_step += 1
             self.callback_handler.on_step_end(self.args, self.state, self.control)
+
+            if self.is_local_process_zero() and (step + 1) % self.args.logging_steps == 0:
+                logs = dict(
+                    loss_reward=round(loss_reward_meter.avg, 4),
+                    policy_learning_rate=self.optimizer.param_groups[0]["lr"],
+                    reward_learning_rate=self.reward_optimizer.param_groups[0]["lr"],
+                    kl_estimate=kl_estimate.detach().mean().item(),
+                    loss_policy=round(loss_policy_meter.avg, 4),
+
+                )
+                tqdm.write(str(logs))
+                logs["step"] = step
+                self.state.log_history.append(logs)
+                self.callback_handler.on_log(self.args, self.state, self.control, logs)
+                loss_reward_meter.reset()
+                loss_policy_meter.reset()
 
             if (step + 1) % self.args.save_steps == 0:  # save checkpoint
                 self.save_model(
@@ -169,6 +231,7 @@ class OREOTrainer(CustomPPOTrainer):
 
         self.callback_handler.on_train_end(self.args, self.state, self.control)
 
+    @PPODecorators.empty_device_cache()
     def accumulated_logps(self, model, ids: torch.Tensor, masks: torch.Tensor, action_masks: torch.Tensor):
         logits, _, _ = model(ids, attention_mask=masks)
 
@@ -197,11 +260,31 @@ class OREOTrainer(CustomPPOTrainer):
         tmp = torch.square((policy_rewards + values - rewards) * state_masks).sum(dim=-1) / state_masks.sum(dim=-1)
         return tmp.mean()
 
+    def dro_loss(
+        self,
+        logps: torch.Tensor,
+        reference_logps: torch.Tensor,
+        accumulated_logps: torch.Tensor,
+        reference_accumulated_logps: torch.Tensor,
+        values: torch.Tensor,
+        state_masks: torch.Tensor,
+        rewards: torch.Tensor,
+    ):
+        policy_rewards = accumulated_logps - reference_accumulated_logps
+        policy_rewards = torch.cat([policy_rewards[:, 1:], torch.zeros_like(values[:, -1]).unsqueeze(-1)], dim=-1)
+        policy_rewards = policy_rewards.detach() + logps - reference_logps
+
+        policy_rewards = self.beta * policy_rewards
+
+        state_masks = state_masks[:, :-1]
+        rewards = rewards.unsqueeze(1)
+        tmp = torch.square((policy_rewards + values - rewards) * state_masks).sum(dim=-1) / state_masks.sum(dim=-1)
+        return tmp.mean()
+
     def _log_info(self) -> None:
         total_train_batch_size = (
             self.args.per_device_train_batch_size
             * self.args.gradient_accumulation_steps
-            * self.finetuning_args.ppo_buffer_size
             * self.args.world_size
         )
         if self.args.max_steps > 0:

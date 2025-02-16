@@ -13,14 +13,14 @@ lora_target: all
 ### dataset
 dataset: oreo_ds_reward
 template: empty
-cutoff_len: 1024
+cutoff_len: 512
 overwrite_cache: true
 preprocessing_num_workers: 16
 
 ### output
 output_dir: saves/test/oreo/lora-qwen-1.5B/oreo
-logging_steps: 5
-save_steps: 10
+logging_steps: 50
+save_steps: 1000
 plot_loss: true
 overwrite_output_dir: true
 save_total_limit: 3
@@ -31,6 +31,8 @@ gradient_accumulation_steps: 8
 learning_rate: 2.0e-5
 reward_learning_rate: 2.0e-5
 reward_beta: 0.01
+oreo_kl_reg: 0.01
+oreo_unbiased_kl: true
 num_train_epochs: 3.0
 lr_scheduler_type: cosine
 warmup_ratio: 0.1

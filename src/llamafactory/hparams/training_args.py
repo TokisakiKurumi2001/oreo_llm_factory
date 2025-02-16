@@ -12,13 +12,21 @@ class OREOArguments:
     r"""
     Arguments for training OREO
     """
-    reward_learning_rate: Optional[int] = field(
-        default=None,
+    reward_learning_rate: int = field(
+        default=2.0e-5,
         metadata={"help": "Learning rate for training reward model."},
     )
-    reward_beta: int = field(
+    reward_beta: float = field(
         default=0.01,
         metadata={"help": "Controlled hyper-parameter beta for reward model training."},
+    )
+    oreo_kl_reg: Optional[float] = field(
+        default=0.01,
+        metadata={"help": "KL divergence between policy and reference model."},
+    )
+    oreo_unbiased_kl: bool = field(
+        default=False,
+        metadata={"help": "KL divergence hyper-parameter between policy and reference model."},
     )
 
 @dataclass
