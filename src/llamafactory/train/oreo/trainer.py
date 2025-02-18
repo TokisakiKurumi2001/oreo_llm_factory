@@ -319,6 +319,9 @@ class OREOTrainer(CustomPPOTrainer):
 
     @override
     def save_model(self, output_dir: Optional[str] = None, is_reward_model: bool = False) -> None:
+        if output_dir is None:
+            output_dir = self.args.output_dir
+            
         if is_reward_model:
             output_dir += "/reward"
             self.save_reward_model(output_dir)

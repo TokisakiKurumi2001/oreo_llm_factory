@@ -84,6 +84,7 @@ def run_oreo(
     if training_args.do_train:
         train_result = trainer.oreo_train(resume_from_checkpoint=training_args.resume_from_checkpoint)
         trainer.save_model()
+        trainer.save_model(is_reward_model=True)
         if finetuning_args.include_effective_tokens_per_second:
             train_result.metrics["effective_tokens_per_sec"] = calculate_tps(
                 dataset_module["train_dataset"], train_result.metrics, stage="sft"
@@ -93,7 +94,7 @@ def run_oreo(
         trainer.save_metrics("train", train_result.metrics)
         trainer.save_state()
         if trainer.is_world_process_zero() and finetuning_args.plot_loss:
-            plot_loss(training_args.output_dir, keys=["loss", "eval_loss"])
+            plot_loss(training_args.output_dir, keys=["loss_policy", "kl_estimate"])
 
     if training_args.predict_with_generate:
         tokenizer.padding_side = "left"  # use left-padding in generation
