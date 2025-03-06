@@ -5,11 +5,13 @@ This repo is built using [base-llm-factory](https://github.com/TokisakiKurumi200
 ## Install
 
 ```bash
+pip install wandb
+pip install torch
 pip install -e .
 ```
 
 ## Run
 
 ```bash
-llamafactory-cli train training_script/oreo/train/oreo.yaml
+sh train.sh
 ```
